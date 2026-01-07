@@ -1,124 +1,286 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../widgets/location_permission_dialog.dart';
 import '../widgets/manual_location_dialog.dart';
 import '../services/user_service.dart';
+import '../services/auth_service.dart';
+import '../providers/language_provider.dart';
+import '../constants/app_colors.dart';
+import '../constants/text_styles.dart';
+import '../widgets/servigo_logo.dart';
 
 class LoginScreen extends StatelessWidget {
   LoginScreen({Key? key}) : super(key: key);
 
   final Uuid uuid = Uuid();
   final UserService userService = UserService();
+  final AuthService authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Login / Guest Access'),
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Logo or App Name
-            Text(
-              'Home Service App',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue,
+      body: Container(
+        color: AppColors.background,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // ServiGo Logo & Branding
+              ServiGoLogo(size: 80, showTagline: true, showIcon: true),
+              SizedBox(height: 40),
+              
+              // Welcome Message (with language support)
+              Text(
+                languageProvider.get('welcome_to_servigo') ?? 'Welcome to ServiGo',
+                style: AppTextStyles.heading3.copyWith(
+                  color: AppColors.trustBlue,
+                ),
               ),
-            ),
-            SizedBox(height: 40),
-            
-            // Phone Login Button
-            ElevatedButton(
-              onPressed: () => _handleLogin(context, 'phone'),
-              style: ElevatedButton.styleFrom(
-                minimumSize: Size(double.infinity, 50),
-                backgroundColor: Colors.green,
+              SizedBox(height: 8),
+              Text(
+                languageProvider.get('tagline') ?? 'Find. Book. Fix. Local Services',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
-              child: Text(
-                'Login with Phone',
-                style: TextStyle(fontSize: 18),
-              ),
-            ),
-            SizedBox(height: 15),
-            
-            // Email Login Button
-            ElevatedButton(
-              onPressed: () => _handleLogin(context, 'email'),
-              style: ElevatedButton.styleFrom(
-                minimumSize: Size(double.infinity, 50),
-              ),
-              child: Text(
-                'Login with Email',
-                style: TextStyle(fontSize: 18),
-              ),
-            ),
-            SizedBox(height: 15),
-            
-            // Guest Button
-            OutlinedButton(
-              onPressed: () => _handleGuestAccess(context),
-              style: OutlinedButton.styleFrom(
-                minimumSize: Size(double.infinity, 50),
-              ),
-              child: Text(
-                'Continue as Guest',
-                style: TextStyle(fontSize: 18),
-              ),
-            ),
-            SizedBox(height: 30),
-            
-            // Sign up text
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text("Don't have an account? "),
-                GestureDetector(
-                  onTap: () {
-                    // TODO: Navigate to sign up
-                    print('Sign up pressed');
-                  },
-                  child: Text(
-                    'Sign Up',
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
+              SizedBox(height: 40),
+              
+              // Phone Login Button - Action Orange
+              ElevatedButton(
+                onPressed: () => _navigateToPhoneLogin(context),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 56),
+                  backgroundColor: AppColors.actionOrange,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.phone, color: Colors.white),
+                    SizedBox(width: 12),
+                    Text(
+                      languageProvider.get('continue_with_phone') ?? 'Continue with Phone',
+                      style: AppTextStyles.buttonLarge,
                     ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+              
+              // Email Login Button - Trust Blue
+              ElevatedButton(
+                onPressed: () => _navigateToEmailLogin(context),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 56),
+                  backgroundColor: AppColors.trustBlue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.email, color: Colors.white),
+                    SizedBox(width: 12),
+                    Text(
+                      languageProvider.get('continue_with_email') ?? 'Continue with Email',
+                      style: AppTextStyles.buttonLarge,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+              
+              // Google Login Button - New from updated version
+              ElevatedButton(
+                onPressed: () => _signInWithGoogle(context),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 56),
+                  backgroundColor: AppColors.error, // Using error color (red-like) for Google
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.g_mobiledata, color: Colors.white),
+                    SizedBox(width: 12),
+                    Text(
+                      languageProvider.get('continue_with_google') ?? 'Continue with Google',
+                      style: AppTextStyles.buttonLarge,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+              
+              // Guest Button - Outlined in Modern Teal
+              OutlinedButton(
+                onPressed: () => _handleGuestAccess(context),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 56),
+                  side: BorderSide(color: AppColors.modernTeal, width: 1.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ],
-            ),
-          ],
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.person_outline, color: AppColors.modernTeal),
+                    SizedBox(width: 12),
+                    Text(
+                      languageProvider.get('continue_as_guest') ?? 'Continue as Guest',
+                      style: AppTextStyles.buttonSecondary.copyWith(
+                        color: AppColors.modernTeal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 40),
+              
+              // Divider with "or"
+              Row(
+                children: [
+                  Expanded(
+                    child: Divider(
+                      color: AppColors.divider,
+                      thickness: 1,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      languageProvider.get('or') ?? 'or',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Divider(
+                      color: AppColors.divider,
+                      thickness: 1,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 24),
+              
+              // Sign up link
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    languageProvider.get('dont_have_account') ?? "Don't have an account? ",
+                    style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.pushNamed(context, '/signup');
+                    },
+                    child: Text(
+                      languageProvider.get('sign_up') ?? 'Sign Up',
+                      style: AppTextStyles.body.copyWith(
+                        color: AppColors.vividAzure,
+                        fontWeight: FontWeight.w600,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 40),
+              
+              // Terms and Privacy notice
+              Text(
+                languageProvider.get('terms_privacy') ?? 'By continuing, you agree to our Terms of Service\nand Privacy Policy',
+                textAlign: TextAlign.center,
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textDisabled,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void _handleLogin(BuildContext context, String method) {
-    print('$method login pressed');
-    // TODO: Implement actual login
-    // TEMP values until real login is implemented
-
-    // Generate a temporary user ID for testing
-    final tempUserId = 'user_${uuid.v4()}'; // Use the uuid instance
-    final tempUserName = 'User';
-    // After successful login, show location dialog
-    _showLocationDialog(context, tempUserId, tempUserName);
+  // Navigation methods from updated version
+  void _navigateToPhoneLogin(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Phone login coming soon!'),
+        backgroundColor: AppColors.vividAzure,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
+    // TODO: Implement actual phone login navigation
+    // Navigator.pushNamed(context, '/phone-login');
   }
 
-  void _handleGuestAccess(BuildContext context) async {
+  void _navigateToEmailLogin(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Email login coming soon!'),
+        backgroundColor: AppColors.vividAzure,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
+    // TODO: Implement actual email login navigation
+    // Navigator.pushNamed(context, '/email-login');
+  }
+
+  // Google Sign In from updated version
+  Future<void> _signInWithGoogle(BuildContext context) async {
+    try {
+      final userCredential = await authService.signInWithGoogle();
+      if (userCredential != null && userCredential.user != null) {
+        _showLocationDialog(context, userCredential.user!.uid, userCredential.user!.displayName ?? 'User');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Google sign in failed: $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      );
+      // Fallback to guest access if Google fails
+      _handleGuestAccess(context);
+    }
+  }
+
+  // Guest access (keeps your current functionality)
+  Future<void> _handleGuestAccess(BuildContext context) async {
     print('Guest access selected');
 
-    //Generate unique ID for guest user
+    // Generate unique ID for guest user
     final guestUserId = 'guest_${uuid.v4()}';
     
     // Save guest mode preference locally
@@ -135,7 +297,7 @@ class LoginScreen extends StatelessWidget {
     // Show location permission dialog
     await LocationPermissionDialog.show(
       context: context,
-      onComplete: (Map<String, dynamic>? locationData) async { // Add type
+      onComplete: (Map<String, dynamic>? locationData) async {
         if (locationData == null) {
           // User cancelled
           return;
@@ -205,12 +367,15 @@ class LoginScreen extends StatelessWidget {
         print('👤 User ID: $userId');
         print('📍 Location: $displayLocation');
       
-        // Show success message
+        // Show success message with ServiGo colors
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Welcome! Location saved successfully.'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+            content: Text('Welcome to ServiGo! Location saved successfully.'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
         );
       } else {
@@ -229,7 +394,11 @@ class LoginScreen extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error saving location. Continuing anyway.'),
-          backgroundColor: Colors.orange,
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
       );
     
