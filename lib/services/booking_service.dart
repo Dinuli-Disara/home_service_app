@@ -4,10 +4,12 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../services/reminder_service.dart';
+import '../services/user_service.dart';
 
 class BookingService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
+  final UserService _userService = UserService();
+  
   // Create a new booking WITHOUT photo upload
   Future<Map<String, dynamic>> createBooking({
     required String userId,
@@ -69,14 +71,29 @@ class BookingService {
       
       print('✅ Booking created (no photo storage): $bookingId');
 
-      // Schedule reminders for this booking
+      // Schedule reminders for this booking using the enhanced reminder service
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {
           final reminderService = ReminderService();
-          await reminderService.scheduleRemindersForBooking(bookingId);
-          print('✅ Reminders scheduled for booking: $bookingId');
+          
+          // Get user data for notification
+          final userData = await _userService.getUserData(userId);
+          final userName = userData?['name'] ?? 'Customer';
+          
+          // Get provider data
+          final providerData = await _userService.getUserData(providerId);
+          final providerName = providerData?['name'] ?? 'Provider';
+          
+          // Schedule customer reminders
+          await reminderService.scheduleCustomerRemindersForBooking(bookingId);
+          
+          // Schedule provider notifications
+          await reminderService.scheduleProviderNotificationsForBooking(bookingId);
+          
+          print('✅ All notifications scheduled for booking: $bookingId');
+          
         } catch (e) {
-          print('⚠️ Error scheduling reminders: $e');
+          print('⚠️ Error scheduling notifications: $e');
         }
       });
       
@@ -95,8 +112,22 @@ class BookingService {
     String note, {
     double? actualCost,
     String? cancellationReason,
+    String? userType = 'customer', // Track who's making the change
   }) async {
     try {
+      // Get current booking data
+      final booking = await getBooking(bookingId);
+      if (booking == null) {
+        throw Exception('Booking not found');
+      }
+      
+      final oldStatus = booking['status'] as String? ?? 'pending';
+      
+      // Don't update if status hasn't changed
+      if (oldStatus == status) {
+        return;
+      }
+
       final updates = <String, dynamic>{
         'status': status,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -113,7 +144,7 @@ class BookingService {
           updates['completedNote'] = note;
           if (actualCost != null) {
             updates['actualCost'] = actualCost;
-            updates['totalAmount'] = actualCost; // Could be same or calculated
+            updates['totalAmount'] = actualCost;
           }
           break;
         case 'cancelled':
@@ -139,16 +170,20 @@ class BookingService {
       
       print('✅ Booking status updated: $bookingId -> $status');
 
-      // If booking is completed, remove any scheduled reminders
-      if (status == 'completed') {
+      // Handle notifications for status change
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {
           final reminderService = ReminderService();
-          await reminderService.cancelRemindersForBooking(bookingId);
-          print('✅ Reminders cancelled for completed booking: $bookingId');
+          await reminderService.handleBookingStatusChange(
+            bookingId: bookingId,
+            oldStatus: oldStatus,
+            newStatus: status,
+          );
+          print('✅ Status change notifications handled for booking: $bookingId');
         } catch (e) {
-          print('⚠️ Error cancelling reminders: $e');
+          print('⚠️ Error handling status change notifications: $e');
         }
-      }
+      });
 
     } catch (e) {
       print('❌ Error updating booking status: $e');
@@ -161,7 +196,6 @@ class BookingService {
     return _firestore
         .collection('bookings')
         .where('userId', isEqualTo: userId)
-        .orderBy('date', descending: true)
         .snapshots()
         .map((snapshot) {
       return snapshot.docs.map((doc) {
@@ -177,7 +211,6 @@ class BookingService {
     return _firestore
         .collection('bookings')
         .where('providerId', isEqualTo: providerId)
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => {
@@ -207,15 +240,16 @@ class BookingService {
     }
   }
 
-  // CancelBooking
-  Future<void> cancelBooking(String bookingId, String reason) async {
+  // CancelBooking with notification support
+  Future<void> cancelBooking(String bookingId, String reason, {String userType = 'customer'}) async {
     try {
-      await _firestore.collection('bookings').doc(bookingId).update({
-        'status': 'cancelled',
-        'cancellationReason': reason,
-        'cancelledAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      await updateBookingStatus(
+        bookingId,
+        'cancelled',
+        'Booking cancelled',
+        cancellationReason: reason,
+        userType: userType,
+      );
       print('✅ Booking cancelled: $bookingId');
     } catch (e) {
       print('❌ Error cancelling booking: $e');
@@ -278,6 +312,7 @@ class BookingService {
         'completed',
         completionNote ?? 'Service completed',
         actualCost: actualCost,
+        userType: 'provider',
       );
     } catch (e) {
       print('❌ Error completing booking with cost: $e');
@@ -292,6 +327,7 @@ class BookingService {
         bookingId,
         'accepted',
         note ?? 'Booking accepted by provider',
+        userType: 'provider',
       );
     } catch (e) {
       print('❌ Error accepting booking: $e');
@@ -307,10 +343,44 @@ class BookingService {
         'rejected',
         note ?? 'Booking rejected by provider',
         cancellationReason: reason,
+        userType: 'provider',
       );
     } catch (e) {
       print('❌ Error rejecting booking: $e');
       rethrow;
+    }
+  }
+  
+  // Get upcoming bookings for notifications
+  Future<List<Map<String, dynamic>>> getUpcomingBookingsForNotifications(String userId, String userType) async {
+    try {
+      final now = Timestamp.now();
+      Query query;
+      
+      if (userType == 'customer') {
+        query = _firestore
+            .collection('bookings')
+            .where('userId', isEqualTo: userId)
+            .where('status', whereIn: ['pending', 'accepted'])
+            .where('date', isGreaterThanOrEqualTo: now);
+      } else {
+        query = _firestore
+            .collection('bookings')
+            .where('providerId', isEqualTo: userId)
+            .where('status', whereIn: ['pending', 'accepted'])
+            .where('date', isGreaterThanOrEqualTo: now);
+      }
+      
+      final snapshot = await query.get();
+      
+      return snapshot.docs.map((doc) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    } catch (e) {
+      print('❌ Error getting upcoming bookings: $e');
+      return [];
     }
   }
 }

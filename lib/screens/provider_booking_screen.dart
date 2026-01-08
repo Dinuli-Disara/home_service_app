@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/booking_service.dart';
 import '../services/user_service.dart';
+import '../services/reminder_service.dart';
 import '../constants/app_colors.dart';
 import '../constants/text_styles.dart';
 
@@ -16,10 +17,12 @@ class ProviderBookingsScreen extends StatefulWidget {
 
 class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> with SingleTickerProviderStateMixin{
   final BookingService _bookingService = BookingService();
+  final ReminderService _reminderService = ReminderService();
   final UserService _userService = UserService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   
   String _providerId = '';
+  String _userType = 'provider';
   int _selectedTab = 0;
   List<Map<String, dynamic>> _bookings = [];
   Map<String, String> _customerNames = {};
@@ -31,6 +34,22 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> with Si
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _loadProviderData();
+
+    // Initialize notifications
+    _initializeNotifications();
+  }
+
+  Future<void> _initializeNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId') ?? '';
+      
+      if (userId.isNotEmpty) {
+        await _reminderService.initialize(userId, 'provider');
+      }
+    } catch (e) {
+      print('⚠️ Error initializing notifications: $e');
+    }
   }
 
   @override
@@ -97,6 +116,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> with Si
         final customerId = booking['customerId'] as String?;
         if (customerId != null && _customerNames.containsKey(customerId)) {
           booking['customerName'] = _customerNames[customerId];
+          booking['customerName'] = 'Customer';
         }
       }
       
@@ -218,7 +238,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> with Si
                 // Already on bookings
                 break;
               case 2:
-                Navigator.pushReplacementNamed(context, '/provider-earnings');
+                Navigator.pushReplacementNamed(context, '/messages');
                 break;
               case 3:
                 Navigator.pushReplacementNamed(context, '/provider-profile');
@@ -227,9 +247,9 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> with Si
           },
           items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined),
-              activeIcon: Icon(Icons.dashboard),
-              label: 'Dashboard',
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home),
+              label: 'Home',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.calendar_today_outlined),
@@ -237,9 +257,9 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> with Si
               label: 'Bookings',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.attach_money_outlined),
-              activeIcon: Icon(Icons.attach_money),
-              label: 'Earnings',
+              icon: Icon(Icons.message_outlined),
+              activeIcon: Icon(Icons.message),
+              label: 'Messages',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outlined),
@@ -321,7 +341,7 @@ class _ProviderBookingsScreenState extends State<ProviderBookingsScreen> with Si
     final date = booking['date'] is Timestamp 
         ? (booking['date'] as Timestamp).toDate()
         : DateTime.now();
-    final formattedDate = DateFormat('MMM dd, yyyy').format(date);
+    final formattedDate = DateFormat('dd MMMyyyy').format(date);
     
     Color statusColor = AppColors.actionOrange;
     String statusText = 'Pending';

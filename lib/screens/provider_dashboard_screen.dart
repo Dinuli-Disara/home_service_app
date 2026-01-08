@@ -683,9 +683,9 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
           unselectedLabelStyle: AppTextStyles.caption,
           items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined),
-              activeIcon: Icon(Icons.dashboard),
-              label: languageProvider.get('dashboard') ?? 'Dashboard',
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home),
+              label: languageProvider.get('Home') ?? 'Dashboard',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.calendar_today_outlined),
@@ -693,9 +693,9 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               label: languageProvider.get('bookings') ?? 'Bookings',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.attach_money_outlined),
-              activeIcon: Icon(Icons.attach_money),
-              label: languageProvider.get('earnings') ?? 'Earnings',
+              icon: Icon(Icons.message_outlined),
+              activeIcon: Icon(Icons.message),
+              label: languageProvider.get('Messages') ?? 'Messages',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outlined),
@@ -723,7 +723,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
         ? (booking['date'] as Timestamp).toDate()
         : DateTime.now();
     
-    final formattedDate = DateFormat('MMM dd, yyyy').format(bookingDate);
+    final formattedDate = DateFormat('dd MMMM yyyy').format(bookingDate);
     
     Color statusColor = AppColors.actionOrange;
     String statusText = 'Pending';
@@ -836,7 +836,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               Text('Service: ${booking['serviceType'] ?? 'N/A'}'),
               SizedBox(height: 8),
               if (booking['date'] is Timestamp)
-                Text('Date: ${DateFormat('yyyy-MM-dd').format((booking['date'] as Timestamp).toDate())}')
+                Text('Date: ${DateFormat('dd MMM yyyy').format((booking['date'] as Timestamp).toDate())}')
               else
                 Text('Date: N/A'),
               SizedBox(height: 8),
@@ -1056,7 +1056,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
         _viewBookings();
         break;
       case 2:
-        _viewEarnings();
+        Navigator.pushNamed(context, '/messages');
         break;
       case 3:
         Navigator.pushNamed(context, '/provider-profile');

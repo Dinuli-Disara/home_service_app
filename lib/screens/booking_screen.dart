@@ -170,7 +170,7 @@ class _BookingScreenState extends State<BookingScreen> {
             // Address
             TextFormField(
               controller: _addressController,
-              maxLines: 2,
+              maxLines: 2, 
               decoration: InputDecoration(
                 labelText: 'Service Address',
                 hintText: 'Enter address where service is needed',
@@ -332,7 +332,7 @@ class _BookingScreenState extends State<BookingScreen> {
     if (picked != null && picked != _selectedDate) {
       setState(() {
         _selectedDate = picked;
-        _dateController.text = DateFormat('yyyy-MM-dd').format(picked);
+        _dateController.text = DateFormat('dd MMM yyyy').format(picked);
       });
     }
   }

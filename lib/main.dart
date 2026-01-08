@@ -131,7 +131,7 @@ class _ServiGoAppState extends State<ServiGoApp> {
     if (userId.isNotEmpty) {
       try {
         final reminderService = ReminderService();
-        await reminderService.initialize(userId);
+        await reminderService.initialize(userId, userType);
         print('✅ Reminders initialized for user: $userId');
       } catch (e) {
         print('❌ Error initializing reminders: $e');
@@ -217,7 +217,7 @@ class _ServiGoAppState extends State<ServiGoApp> {
                 );
               }
             },
-            
+
             '/messages': (context) => MessagesScreen(),
             '/provider-bookings': (context) => ProviderBookingsScreen(),
           },

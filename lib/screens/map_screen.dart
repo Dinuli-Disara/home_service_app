@@ -580,7 +580,7 @@ class ProviderDetailsBottomSheet extends StatelessWidget {
             children: [
               InfoChip(
                 icon: Icons.attach_money,
-                text: '₹${hourlyRate.toInt()}/hour',
+                text: 'Rs.${hourlyRate.toInt()}/hour',
                 color: AppColors.success,
               ),
               SizedBox(width: 8),

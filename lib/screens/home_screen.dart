@@ -115,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text('Service: ${booking['serviceType']}'),
               SizedBox(height: 10),
-              Text('Date: ${DateFormat('yyyy-MM-dd').format((booking['date'] as Timestamp).toDate())}'),
+              Text('Date: ${DateFormat('dd MMM yyyy').format((booking['date'] as Timestamp).toDate())}'),
               SizedBox(height: 10),
               Text('Time: ${booking['time']}'),
               SizedBox(height: 10),

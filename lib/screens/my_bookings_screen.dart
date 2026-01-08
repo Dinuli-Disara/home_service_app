@@ -6,6 +6,7 @@ import '../services/booking_service.dart';
 import '../services/user_service.dart';
 import '../constants/app_colors.dart';
 import '../constants/text_styles.dart';
+import '../services/reminder_service.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({Key? key}) : super(key: key);
@@ -19,8 +20,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
   final BookingService _bookingService = BookingService();
   final UserService _userService = UserService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
+  final ReminderService _reminderService = ReminderService();
+
   String _userId = '';
+  String _userType = 'customer';
   Map<String, String> _providerNames = {};
   List<Map<String, dynamic>> _allBookings = [];
   bool _isLoading = true;
@@ -30,12 +33,28 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _loadUserId();
+
+  }
+
+  Future<void> _initializeNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getString('userId') ?? '';
+      final userType = prefs.getString('userType') ?? 'customer';
+      
+      if (userId.isNotEmpty) {
+        await _reminderService.initialize(userId, userType);
+      }
+    } catch (e) {
+      print('⚠️ Error initializing notifications: $e');
+    }
   }
 
   Future<void> _loadUserId() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId') ?? '';
+      final userType = prefs.getString('userType') ?? 'customer';
       
       if (userId.isEmpty) {
         print('⚠️ No user ID found');
@@ -43,9 +62,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
         return;
       }
       
-      setState(() => _userId = userId);
-      print('📋 Loading bookings for user: $userId');
+      setState(() {
+        _userId = userId;
+        _userType = userType;
+      });
       
+      print('📋 Loading bookings for user: $userId ($userType)');
+            
       await _loadAllBookings();
       
     } catch (e) {
@@ -326,7 +349,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
     required bool isCompleted,
   }) {
     final date = _getBookingDate(booking);
-    final formattedDate = DateFormat('MMM dd, yyyy').format(date);
+    final formattedDate = DateFormat('dd MMM yyyy').format(date);
     final status = booking['status'] ?? 'pending';
     
     Color statusColor = AppColors.actionOrange;
@@ -689,7 +712,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                           Padding(
                             padding: const EdgeInsets.only(top: 4.0),
                             child: Text(
-                              'Reviewed on: ${DateFormat('MMM dd, yyyy').format((booking['reviewedAt'] as Timestamp).toDate())}',
+                              'Reviewed on: ${DateFormat('dd MMM yyyy').format((booking['reviewedAt'] as Timestamp).toDate())}',
                               style: TextStyle(
                                 color: AppColors.textDisabled,
                                 fontSize: 12,
@@ -781,6 +804,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
         await _bookingService.cancelBooking(
           booking['id'],
           'Cancelled by customer',
+          userType: 'customer',
         );
         
         ScaffoldMessenger.of(context).showSnackBar(
