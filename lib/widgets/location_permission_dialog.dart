@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'manual_location_dialog.dart';
 
 class LocationPermissionDialog {
   static Future<void> show({
@@ -15,7 +16,7 @@ class LocationPermissionDialog {
         );
       },
     );
-  }
+  } 
 }
 
 class _LocationPermissionDialogContent extends StatefulWidget {
@@ -175,9 +176,14 @@ class _LocationPermissionDialogContentState
   }
 
   // Update _handleManualEntry:
-  void _handleManualEntry() {
-    final manualData = {'type': 'manual'};
-    Navigator.of(context).pop(manualData);
-    widget.onComplete(manualData);
+  void _handleManualEntry() async {
+    final manualLocationData = await ManualLocationDialog.show(context: context);
+    if (manualLocationData != null && mounted) {
+      Navigator.of(context).pop(manualLocationData);
+      widget.onComplete(manualLocationData);
+    } else {
+      Navigator.of(context).pop();
+      widget.onComplete(null);
+    }
   }
 }

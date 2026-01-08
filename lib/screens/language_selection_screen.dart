@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/language_provider.dart';
-
-// Import ServiGo theme components
 import '../constants/app_colors.dart';
 import '../constants/text_styles.dart';
 import '../widgets/servigo_logo.dart';
 
 class LanguageSelectionScreen extends StatelessWidget {
-  const LanguageSelectionScreen({Key? key}) : super(key: key);
+  final VoidCallback? onLanguageSelected;
+  const LanguageSelectionScreen({Key? key, this.onLanguageSelected,}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -108,9 +107,19 @@ class LanguageSelectionScreen extends StatelessWidget {
                 
                 // Skip for now (optional) - MOVE ABOVE BOTTOM SPACER
                 TextButton(
-                  onPressed: () {
+                  onPressed: () async {
                     // Use English as default
                     languageProvider.setLanguage('en');
+
+                    // Save language selection
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setString('selected_language', 'en');
+                    await prefs.setBool('language_selected', true);
+
+                     // Call the callback if provided
+                    if (onLanguageSelected != null) {
+                      onLanguageSelected!();
+                    }
                     Navigator.pushReplacementNamed(context, '/login');
                   },
                   child: Text(
@@ -121,8 +130,6 @@ class LanguageSelectionScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                
-                // ✅ ADDED: Bottom spacer to prevent overflow
                 SizedBox(height: 20),
               ],
             ),
@@ -138,12 +145,23 @@ class LanguageSelectionScreen extends StatelessWidget {
     required String code,
     required Color color,
     required LanguageProvider languageProvider,
+    VoidCallback? onLanguageSelected,
   }) {
     return ElevatedButton(
       onPressed: () async {
         // Animate button press
         await languageProvider.setLanguage(code);
         
+        // Save language selection to SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('selected_language', code);
+        await prefs.setBool('language_selected', true);
+        
+        // Call the callback if provided
+        if (onLanguageSelected != null) {
+          onLanguageSelected!();
+        }
+
         // Show brief loading/confirmation
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -163,7 +181,7 @@ class LanguageSelectionScreen extends StatelessWidget {
       },
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
-        minimumSize: Size(double.infinity, 60), // ✅ Reduced from 64px
+        minimumSize: Size(double.infinity, 60), 
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),

@@ -88,6 +88,74 @@ class BookingService {
     }
   }
 
+   // ==================== UPDATE BOOKING STATUS ====================
+  Future<void> updateBookingStatus(
+    String bookingId,
+    String status,
+    String note, {
+    double? actualCost,
+    String? cancellationReason,
+  }) async {
+    try {
+      final updates = <String, dynamic>{
+        'status': status,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      // Add status-specific fields
+      switch (status) {
+        case 'accepted':
+          updates['acceptedAt'] = FieldValue.serverTimestamp();
+          updates['acceptedNote'] = note;
+          break;
+        case 'completed':
+          updates['completedAt'] = FieldValue.serverTimestamp();
+          updates['completedNote'] = note;
+          if (actualCost != null) {
+            updates['actualCost'] = actualCost;
+            updates['totalAmount'] = actualCost; // Could be same or calculated
+          }
+          break;
+        case 'cancelled':
+          updates['cancelledAt'] = FieldValue.serverTimestamp();
+          updates['cancellationNote'] = note;
+          if (cancellationReason != null) {
+            updates['cancellationReason'] = cancellationReason;
+          }
+          break;
+        case 'rejected':
+          updates['rejectedAt'] = FieldValue.serverTimestamp();
+          updates['rejectionNote'] = note;
+          if (cancellationReason != null) {
+            updates['rejectionReason'] = cancellationReason;
+          }
+          break;
+        default:
+          updates['statusNote'] = note;
+      }
+
+      // Update the booking
+      await _firestore.collection('bookings').doc(bookingId).update(updates);
+      
+      print('✅ Booking status updated: $bookingId -> $status');
+
+      // If booking is completed, remove any scheduled reminders
+      if (status == 'completed') {
+        try {
+          final reminderService = ReminderService();
+          await reminderService.cancelRemindersForBooking(bookingId);
+          print('✅ Reminders cancelled for completed booking: $bookingId');
+        } catch (e) {
+          print('⚠️ Error cancelling reminders: $e');
+        }
+      }
+
+    } catch (e) {
+      print('❌ Error updating booking status: $e');
+      rethrow;
+    }
+  }
+
   // Get user's bookings
   Stream<List<Map<String, dynamic>>> getUserBookings(String userId) {
     return _firestore
@@ -102,6 +170,21 @@ class BookingService {
         return data;
       }).toList();
     });
+  }
+
+  // Get provider bookings
+  Stream<List<Map<String, dynamic>>> getProviderBookingsStream(String providerId) {
+    return _firestore
+        .collection('bookings')
+        .where('providerId', isEqualTo: providerId)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => {
+                  'id': doc.id,
+                  ...doc.data(),
+                })
+            .toList());
   }
 
   // Get booking by ID
@@ -162,6 +245,72 @@ class BookingService {
     } catch (e) {
       print('❌ Error getting bookings count: $e');
       return 0;
+    }
+  }
+
+  // ==================== ADDITIONAL HELPER METHODS ====================
+
+  // Get provider's pending bookings count
+  Future<int> getProviderPendingCount(String providerId) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection('bookings')
+          .where('providerId', isEqualTo: providerId)
+          .where('status', isEqualTo: 'pending')
+          .get();
+      
+      return snapshot.docs.length;
+    } catch (e) {
+      print('❌ Error getting provider pending count: $e');
+      return 0;
+    }
+  }
+
+  // Update booking with actual cost and completion details
+  Future<void> completeBookingWithCost(
+    String bookingId,
+    double actualCost, {
+    String? completionNote,
+  }) async {
+    try {
+      await updateBookingStatus(
+        bookingId,
+        'completed',
+        completionNote ?? 'Service completed',
+        actualCost: actualCost,
+      );
+    } catch (e) {
+      print('❌ Error completing booking with cost: $e');
+      rethrow;
+    }
+  }
+
+  // Accept booking (convenience method)
+  Future<void> acceptBooking(String bookingId, {String? note}) async {
+    try {
+      await updateBookingStatus(
+        bookingId,
+        'accepted',
+        note ?? 'Booking accepted by provider',
+      );
+    } catch (e) {
+      print('❌ Error accepting booking: $e');
+      rethrow;
+    }
+  }
+
+  // Reject booking (convenience method)
+  Future<void> rejectBooking(String bookingId, {String? reason, String? note}) async {
+    try {
+      await updateBookingStatus(
+        bookingId,
+        'rejected',
+        note ?? 'Booking rejected by provider',
+        cancellationReason: reason,
+      );
+    } catch (e) {
+      print('❌ Error rejecting booking: $e');
+      rethrow;
     }
   }
 }

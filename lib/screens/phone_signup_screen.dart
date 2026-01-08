@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
+import '../services/user_service.dart';
 import '../providers/language_provider.dart';
+import '../constants/app_colors.dart';
+import '../constants/text_styles.dart';
 
 class PhoneSignUpScreen extends StatefulWidget {
   const PhoneSignUpScreen({Key? key}) : super(key: key);
@@ -12,319 +16,229 @@ class PhoneSignUpScreen extends StatefulWidget {
 
 class _PhoneSignUpScreenState extends State<PhoneSignUpScreen> {
   final _authService = AuthService();
+  final _userService = UserService();
   
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _codeController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _codeController = TextEditingController();
   
   bool _isLoading = false;
-  bool _codeSent = false;
   String _errorMessage = '';
-  String _verificationId = '';
+  bool _codeSent = false;
+  String? _userType;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _userType = ModalRoute.of(context)?.settings.arguments as String?;
+    if (_userType == null) _userType = 'customer';
+  }
 
   @override
   Widget build(BuildContext context) {
     final languageProvider = Provider.of<LanguageProvider>(context);
-    
+    final isProvider = _userType == 'provider';
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('Phone Sign Up'),
+        title: Text(isProvider
+          ? languageProvider.get('provider_phone_signup') ?? 'Provider Phone Sign Up'
+          : languageProvider.get('phone_signup') ?? 'Phone Sign Up'),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
-          onPressed: () {
-            if (_codeSent) {
-              setState(() {
-                _codeSent = false;
-                _codeController.clear();
-              });
-            } else {
-              Navigator.pop(context);
-            }
-          },
+          onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(20),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            Center(
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.phone_android,
-                    size: 80,
-                    color: Colors.green,
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    _codeSent ? 'Verify Code' : 'Phone Sign Up',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    _codeSent
-                        ? 'Enter the verification code sent to your phone'
-                        : 'Sign up using your phone number',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+            Text(
+              isProvider
+                ? languageProvider.get('provider_phone_verification') ?? 'Verify your phone to become a provider'
+                : languageProvider.get('phone_verification') ?? 'Verify your phone number',
+              style: AppTextStyles.heading4,
+            ),
+            SizedBox(height: 8),
+            Text(
+              isProvider
+                ? languageProvider.get('provider_phone_description') ?? 'We\'ll send a verification code to your phone'
+                : languageProvider.get('phone_description') ?? 'We\'ll send a verification code to your phone',
+              style: AppTextStyles.bodySmall.copyWith(
+                color: AppColors.textSecondary,
               ),
             ),
-            SizedBox(height: 30),
-            
-            // Error message
-            if (_errorMessage.isNotEmpty)
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red[200]!),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.error_outline, color: Colors.red, size: 20),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        _errorMessage,
-                        style: TextStyle(color: Colors.red[800]),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            
-            if (_errorMessage.isNotEmpty) SizedBox(height: 20),
-            
+            SizedBox(height: 40),
+
             if (!_codeSent) ...[
-              // Name field (only before code sent)
+              // Name field
               TextFormField(
                 controller: _nameController,
                 decoration: InputDecoration(
-                  labelText: 'Full Name',
-                  hintText: 'Enter your name',
+                  labelText: languageProvider.get('full_name') ?? 'Full Name',
                   prefixIcon: Icon(Icons.person),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  filled: true,
+                  fillColor: AppColors.surface,
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter your name';
-                  }
-                  return null;
-                },
               ),
-              SizedBox(height: 15),
-              
-              // Phone number field
+              SizedBox(height: 16),
+
+              // Phone field
               TextFormField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
-                  labelText: 'Phone Number',
-                  hintText: 'Enter your phone number',
+                  labelText: languageProvider.get('phone_number') ?? 'Phone Number',
+                  hintText: '+94771234567',
                   prefixIcon: Icon(Icons.phone),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  filled: true,
+                  fillColor: AppColors.surface,
                 ),
               ),
-              SizedBox(height: 10),
-              
-              Text(
-                'Enter phone number with country code (e.g., +94771234567)',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
+              SizedBox(height: 24),
+
+              // Send Code Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _sendVerificationCode,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.actionOrange,
+                    minimumSize: Size(double.infinity, 56),
+                  ),
+                  child: _isLoading
+                    ? CircularProgressIndicator(color: Colors.white)
+                    : Text(languageProvider.get('send_code') ?? 'Send Verification Code'),
                 ),
               ),
             ] else ...[
-              // Verification code field
+              // Verification Code field
               TextFormField(
                 controller: _codeController,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: 'Verification Code',
-                  hintText: 'Enter 6-digit code',
+                  labelText: languageProvider.get('verification_code') ?? 'Verification Code',
                   prefixIcon: Icon(Icons.sms),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  filled: true,
+                  fillColor: AppColors.surface,
                 ),
-                maxLength: 6,
               ),
-              SizedBox(height: 10),
-              
-              // Resend code option
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('Didn\'t receive code? '),
-                  TextButton(
-                    onPressed: _isLoading ? null : _resendCode,
-                    child: Text('Resend'),
+              SizedBox(height: 16),
+              Text(
+                languageProvider.get('enter_6_digit_code') ?? 'Enter the 6-digit code sent to ${_phoneController.text}',
+                style: AppTextStyles.bodySmall,
+              ),
+              SizedBox(height: 24),
+
+              // Verify Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _verifyCode,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    minimumSize: Size(double.infinity, 56),
                   ),
-                ],
+                  child: _isLoading
+                    ? CircularProgressIndicator(color: Colors.white)
+                    : Text(languageProvider.get('verify_code') ?? 'Verify Code'),
+                ),
+              ),
+
+              SizedBox(height: 16),
+              TextButton(
+                onPressed: _resendCode,
+                child: Text(languageProvider.get('resend_code') ?? 'Resend Code'),
               ),
             ],
-            
-            SizedBox(height: 30),
-            
-            // Action Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _codeSent ? _verifyCode : _sendCode,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isLoading
-                    ? SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : Text(
-                        _codeSent ? 'Verify & Sign Up' : 'Send Verification Code',
-                        style: TextStyle(fontSize: 18),
-                      ),
-              ),
-            ),
-            
+
             SizedBox(height: 20),
-            
-            // Back to other options
-            Center(
-              child: TextButton(
-                onPressed: () {
-                  Navigator.pushReplacementNamed(context, '/login');
-                },
-                child: Text('Back to Login Options'),
+            if (_errorMessage.isNotEmpty)
+              Text(
+                _errorMessage,
+                style: TextStyle(color: AppColors.error),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Future<void> _sendCode() async {
-    final phoneNumber = _phoneController.text.trim();
-    final name = _nameController.text.trim();
-    
-    if (phoneNumber.isEmpty) {
-      setState(() {
-        _errorMessage = 'Please enter your phone number';
-      });
+  Future<void> _sendVerificationCode() async {
+    if (_phoneController.text.isEmpty) {
+      setState(() => _errorMessage = 'Please enter phone number');
       return;
     }
-    
-    if (name.isEmpty) {
-      setState(() {
-        _errorMessage = 'Please enter your name';
-      });
+    if (_nameController.text.isEmpty) {
+      setState(() => _errorMessage = 'Please enter your name');
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-    
+
     try {
-      await _authService.sendPhoneVerificationCode(phoneNumber);
-      
-      setState(() {
-        _codeSent = true;
-        _isLoading = false;
-      });
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Verification code sent to $phoneNumber'),
-          duration: Duration(seconds: 3),
-        ),
-      );
+      await _authService.sendPhoneVerificationCode(_phoneController.text.trim());
+      setState(() => _codeSent = true);
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Failed to send code. Please check phone number.';
-        _isLoading = false;
-      });
+      setState(() => _errorMessage = 'Failed to send code: $e');
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
   Future<void> _verifyCode() async {
-    final code = _codeController.text.trim();
-    
-    if (code.isEmpty || code.length != 6) {
-      setState(() {
-        _errorMessage = 'Please enter a valid 6-digit code';
-      });
+    if (_codeController.text.isEmpty) {
+      setState(() => _errorMessage = 'Please enter verification code');
       return;
     }
-    
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-    
+
     try {
-      final user = await _authService.verifyPhoneCode(code);
-      
+      final user = await _authService.verifyPhoneCode(
+        smsCode: _codeController.text.trim(),
+        name: _nameController.text.trim(),
+        userType: _userType!,
+      );
+
       if (user != null) {
-        // Update user display name
-        await user.updateDisplayName(_nameController.text.trim());
-        
-        // Navigate to location
-        _navigateToLocation(user.uid, _nameController.text.trim());
+        // Save user data locally
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isGuest', false);
+        await prefs.setString('userId', user.uid);
+        await prefs.setString('userName', _nameController.text.trim());
+        await prefs.setString('userPhone', _phoneController.text.trim());
+        await prefs.setString('userType', _userType!);
+
+        // Navigate based on user type
+        if (_userType == 'customer') {
+          Navigator.pushReplacementNamed(context, '/main-home');
+        } else {
+          Navigator.pushReplacementNamed(context, '/provider-dashboard');
+        }
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Invalid verification code. Please try again.';
-        _isLoading = false;
-      });
+      setState(() => _errorMessage = 'Verification failed: $e');
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
   Future<void> _resendCode() async {
-    await _sendCode();
-  }
-
-  void _navigateToLocation(String userId, String userName) {
-    Navigator.pushReplacementNamed(
-      context,
-      '/map',
-      arguments: {
-        'userId': userId,
-        'userName': userName,
-        'isNewUser': true,
-      },
-    );
-  }
-
-  @override
-  void dispose() {
-    _phoneController.dispose();
-    _codeController.dispose();
-    _nameController.dispose();
-    super.dispose();
+    setState(() => _isLoading = true);
+    try {
+      await _authService.sendPhoneVerificationCode(_phoneController.text.trim());
+    } catch (e) {
+      setState(() => _errorMessage = 'Failed to resend code');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 }

@@ -11,8 +11,6 @@ import '../services/firebase_test.dart';
 import '../services/booking_service.dart';
 import '../providers/language_provider.dart';
 import '../services/reminder_service.dart';
-
-// Import ServiGo theme components
 import '../constants/app_colors.dart';
 import '../constants/text_styles.dart';
 import '../widgets/servigo_logo.dart';
@@ -32,6 +30,45 @@ class _HomeScreenState extends State<HomeScreen> {
   String _userId = '';
   final UserService _userService = UserService();
   final BookingService _bookingService = BookingService();
+  int _currentIndex =0;
+
+  void _onTabTapped(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+
+    switch (index) {
+      case 0: // Home - already here
+        break;
+      case 1: // Bookings
+        Navigator.pushNamed(context, '/my-bookings');
+        // Reset index to 0 after navigation
+        Future.delayed(Duration(milliseconds: 300), () {
+          setState(() {
+            _currentIndex = 0;
+          });
+        });
+        break;
+      case 2: // Messages
+        Navigator.pushNamed(context, '/messages');
+        // Reset index to 0 after navigation
+        Future.delayed(Duration(milliseconds: 300), () {
+          setState(() {
+            _currentIndex = 0;
+          });
+        });
+        break;
+      case 3: // Profile
+        Navigator.pushNamed(context, '/customer-profile');
+        // Reset index to 0 after navigation
+        Future.delayed(Duration(milliseconds: 300), () {
+          setState(() {
+            _currentIndex = 0;
+          });
+        });
+        break;
+    }
+  }
 
   Color _getStatusColor(String status) {
     switch (status) {
@@ -348,13 +385,7 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: Icon(Icons.notifications_outlined, color: Colors.white),
             onPressed: () {
-              // TODO: Notifications screen
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.person_outline, color: Colors.white),
-            onPressed: () {
-              // TODO: Profile screen
+              Navigator.pushNamed(context, '/notifications');
             },
           ),
         ],
@@ -458,39 +489,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               SizedBox(height: 20),
-
-              // Database Status
-              Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: _isDatabaseConnected ? AppColors.success.withOpacity(0.1) : AppColors.warning.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: _isDatabaseConnected ? AppColors.success : AppColors.warning,
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _isDatabaseConnected ? Icons.cloud_done : Icons.cloud_off,
-                      size: 18,
-                      color: _isDatabaseConnected ? AppColors.success : AppColors.warning,
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      'Database: $_databaseStatus',
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: _isDatabaseConnected ? AppColors.success : AppColors.warning,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 20),
-              
               // Service Categories
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -537,379 +535,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               SizedBox(height: 25),
-
-              // Upcoming Bookings Section
-              StreamBuilder<int>(
-                stream: Stream.fromFuture(_bookingService.getUpcomingBookingsCount(_userId)),
-                builder: (context, snapshot) {
-                  final bookingCount = snapshot.data ?? 0;
-                  
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Upcoming Bookings',
-                            style: AppTextStyles.heading4.copyWith(
-                              color: AppColors.trustBlue,
-                            ),
-                          ),
-                          if (bookingCount > 0)
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pushNamed(context, '/my-bookings');
-                              },
-                              child: Row(
-                                children: [
-                                  Text(
-                                    'View All ',
-                                    style: AppTextStyles.body.copyWith(
-                                      color: AppColors.vividAzure,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.vividAzure.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      '$bookingCount',
-                                      style: AppTextStyles.bodySmall.copyWith(
-                                        color: AppColors.vividAzure,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                        ],
-                      ),
-                      SizedBox(height: 10),
-                      
-                      if (bookingCount == 0)
-                        // Empty state
-                        Container(
-                          padding: EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(Icons.calendar_today_outlined, size: 50, color: AppColors.textDisabled),
-                              SizedBox(height: 12),
-                              Text(
-                                'No upcoming bookings',
-                                style: AppTextStyles.body.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.pushNamed(context, '/map');
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.actionOrange,
-                                  minimumSize: Size(double.infinity, 44),
-                                ),
-                                child: Text(
-                                  'Book a Service',
-                                  style: AppTextStyles.button,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        // Show next booking
-                        StreamBuilder<List<Map<String, dynamic>>>(
-                          stream: _bookingService.getUserBookings(_userId),
-                          builder: (context, snapshot) {
-                            if (!snapshot.hasData) {
-                              return Container(
-                                padding: EdgeInsets.all(20),
-                                child: Center(
-                                  child: CircularProgressIndicator(
-                                    color: AppColors.vividAzure,
-                                  ),
-                                ),
-                              );
-                            }
-                            
-                            final upcomingBookings = snapshot.data!.where((b) => 
-                              (b['status'] == 'pending' || b['status'] == 'accepted') &&
-                              (b['date'] as Timestamp).toDate().isAfter(DateTime.now())
-                            ).toList();
-                            
-                            if (upcomingBookings.isEmpty) {
-                              return Container(
-                                padding: EdgeInsets.all(24),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Icon(Icons.calendar_today_outlined, size: 50, color: AppColors.textDisabled),
-                                    SizedBox(height: 12),
-                                    Text(
-                                      'No upcoming bookings',
-                                      style: AppTextStyles.body.copyWith(
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-                            
-                            // Sort by date (earliest first)
-                            upcomingBookings.sort((a, b) => 
-                              (a['date'] as Timestamp).compareTo(b['date'] as Timestamp));
-                            
-                            final nextBooking = upcomingBookings.first;
-                            final date = (nextBooking['date'] as Timestamp).toDate();
-                            final formattedDate = DateFormat('MMM dd, yyyy').format(date);
-                            
-                            return Card(
-                              elevation: 2,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(16),
-                                onTap: () {
-                                  Navigator.pushNamed(context, '/my-bookings');
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              nextBooking['serviceType'] ?? 'Service',
-                                              style: AppTextStyles.heading5.copyWith(
-                                                color: AppColors.textPrimary,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          Container(
-                                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: _getStatusColor(nextBooking['status']).withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(20),
-                                              border: Border.all(
-                                                color: _getStatusColor(nextBooking['status']).withOpacity(0.3),
-                                              ),
-                                            ),
-                                            child: Text(
-                                              _getStatusText(nextBooking['status']),
-                                              style: AppTextStyles.bodySmall.copyWith(
-                                                color: _getStatusColor(nextBooking['status']),
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 12),
-                                      Row(
-                                        children: [
-                                          Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.textSecondary),
-                                          SizedBox(width: 8),
-                                          Text(
-                                            '$formattedDate at ${nextBooking['time']}',
-                                            style: AppTextStyles.bodySmall.copyWith(
-                                              color: AppColors.textPrimary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 8),
-                                      Row(
-                                        children: [
-                                          Icon(Icons.location_on_outlined, size: 18, color: AppColors.textSecondary),
-                                          SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              '${nextBooking['address']}',
-                                              style: AppTextStyles.bodySmall.copyWith(
-                                                color: AppColors.textSecondary,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      SizedBox(height: 16),
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: OutlinedButton(
-                                              onPressed: () {
-                                                _viewBookingDetails(nextBooking);
-                                              },
-                                              style: OutlinedButton.styleFrom(
-                                                side: BorderSide(color: AppColors.trustBlue),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                              ),
-                                              child: Text(
-                                                'View Details',
-                                                style: AppTextStyles.buttonSecondary,
-                                              ),
-                                            ),
-                                          ),
-                                          SizedBox(width: 12),
-                                          Expanded(
-                                            child: ElevatedButton(
-                                              onPressed: () {
-                                                // TODO: Contact provider
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: AppColors.actionOrange,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius: BorderRadius.circular(12),
-                                                ),
-                                              ),
-                                              child: Text(
-                                                'Contact',
-                                                style: AppTextStyles.button,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                    ],
-                  );
-                },
-              ),
-              SizedBox(height: 25),
-
-              // Reminders Card
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [AppColors.surface, AppColors.cleanWhite],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: AppColors.vividAzure.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Icon(
-                              Icons.notifications_active_outlined,
-                              color: AppColors.vividAzure,
-                              size: 22,
-                            ),
-                          ),
-                          SizedBox(width: 12),
-                          Text(
-                            'Booking Reminders',
-                            style: AppTextStyles.heading5.copyWith(
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'We\'ll remind you about your bookings:',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Icon(Icons.check_circle, size: 18, color: AppColors.success),
-                          SizedBox(width: 10),
-                          Text(
-                            '1 day before your service',
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.check_circle, size: 18, color: AppColors.success),
-                          SizedBox(width: 10),
-                          Text(
-                            '1 hour before arrival',
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 20),
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          final reminderService = ReminderService();
-                          await reminderService.sendTestReminder();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Test notification sent!'),
-                              backgroundColor: AppColors.vividAzure,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                          );
-                        },
-                        icon: Icon(Icons.notifications_none, size: 20),
-                        label: Text('Test Notification'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.vividAzure,
-                          minimumSize: Size(double.infinity, 44),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
         ),
@@ -927,7 +552,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         child: BottomNavigationBar(
-          currentIndex: 0,
+          currentIndex: _currentIndex,
           type: BottomNavigationBarType.fixed,
           backgroundColor: AppColors.cleanWhite,
           selectedItemColor: AppColors.actionOrange,
@@ -936,6 +561,7 @@ class _HomeScreenState extends State<HomeScreen> {
             fontWeight: FontWeight.w600,
           ),
           unselectedLabelStyle: AppTextStyles.caption,
+          onTap: _onTabTapped,
           items: [
             BottomNavigationBarItem(
               icon: Icon(Icons.home_outlined),
@@ -943,13 +569,8 @@ class _HomeScreenState extends State<HomeScreen> {
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.search_outlined),
-              activeIcon: Icon(Icons.search),
-              label: 'Explore',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.bookmark_border),
-              activeIcon: Icon(Icons.bookmark),
+              icon: Icon(Icons.calendar_today_outlined),
+              activeIcon: Icon(Icons.calendar_today),
               label: 'Bookings',
             ),
             BottomNavigationBarItem(
@@ -957,10 +578,12 @@ class _HomeScreenState extends State<HomeScreen> {
               activeIcon: Icon(Icons.chat),
               label: 'Messages',
             ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
+              label: 'Profile',
+            ),
           ],
-          onTap: (index) {
-            // TODO: Navigation
-          },
         ),
       ),
     );

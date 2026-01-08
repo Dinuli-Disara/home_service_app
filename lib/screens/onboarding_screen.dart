@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
-
-// Import ServiGo theme components
 import '../constants/app_colors.dart';
 import '../constants/text_styles.dart';
-import '../widgets/servigo_logo.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onCompleted;
@@ -19,6 +16,7 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  bool _isCompleting = false;
 
   final List<OnboardingPage> _pages = [
     OnboardingPage(
@@ -138,7 +136,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: _isCompleting ? null : () {
                       if (_currentPage < _pages.length - 1) {
                         _pageController.nextPage(
                           duration: Duration(milliseconds: 400),
@@ -157,12 +155,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       elevation: 3,
                       shadowColor: _pages[_currentPage].color.withOpacity(0.3),
                     ),
-                    child: Text(
-                      _currentPage < _pages.length - 1 ? 'Continue' : 'Get Started',
-                      style: AppTextStyles.buttonLarge.copyWith(
-                        fontSize: 18,
-                      ),
-                    ),
+                    child: _isCompleting 
+                      ? SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          _currentPage < _pages.length - 1 ? 'Continue' : 'Get Started',
+                          style: AppTextStyles.buttonLarge.copyWith(
+                            fontSize: 18,
+                          ),
+                        ),
                   ),
                 ),
               ],
@@ -238,11 +245,35 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _completeOnboarding() async {
-    // Mark onboarding as completed
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('onboarding_completed', true);
+    // Prevent multiple taps
+    if (_isCompleting) return;
     
-    widget.onCompleted();
+    setState(() {
+      _isCompleting = true;
+    });
+    
+    try {
+      // Mark onboarding as completed
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('onboarding_completed', true);
+      print('✅ Onboarding completed flag saved');
+      
+      // Navigate directly without using the callback
+      if (mounted) {
+        await Future.delayed(Duration(milliseconds: 300));
+        
+        // Option 1: Use Navigator directly
+        Navigator.of(context).pushReplacementNamed('/language-selection');
+        
+        // Option 2: Call the callback if you still want to use it
+        // widget.onCompleted();
+      }
+    } catch (e) {
+      print('❌ Error completing onboarding: $e');
+      setState(() {
+        _isCompleting = false;
+      });
+    }
   }
 
   @override

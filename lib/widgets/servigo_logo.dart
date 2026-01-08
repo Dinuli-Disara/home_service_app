@@ -25,39 +25,19 @@ class ServiGoLogo extends StatelessWidget {
       children: [
         Row(
           mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center, // ✅ Center align
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (showIcon) ...[
-              Container(
+              // Use Image.asset instead of the container with gradient
+              Image.asset(
+                'assets/images/app_icon.png', // Path to your logo
                 width: size,
                 height: size,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      primaryColor ?? AppColors.trustBlue,
-                      accentColor ?? AppColors.modernTeal,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(size * 0.2),
-                ),
-                child: Center(
-                  child: Text(
-                    'SG',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: size * 0.35,
-                      fontWeight: FontWeight.w800,
-                      fontFamily: 'Montserrat',
-                    ),
-                  ),
-                ),
+                fit: BoxFit.contain,
               ),
               SizedBox(width: 12),
             ],
             
-            // ✅ FIXED: Use Flexible to prevent overflow
             Flexible(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -68,7 +48,7 @@ class ServiGoLogo extends StatelessWidget {
                     style: AppTextStyles.logo.copyWith(
                       fontSize: size * 0.7,
                     ),
-                    overflow: TextOverflow.ellipsis, // ✅ Add overflow handling
+                    overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                   ),
                   if (showTagline) ...[
@@ -92,7 +72,7 @@ class ServiGoLogo extends StatelessWidget {
   }
 }
 
-// ✅ UPDATED: ServiGoLogoCompact for AppBar
+// Updated: ServiGoLogoCompact to use the logo image
 class ServiGoLogoCompact extends StatelessWidget {
   final double size;
   
@@ -107,11 +87,6 @@ class ServiGoLogoCompact extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.trustBlue, AppColors.vividAzure],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
         borderRadius: BorderRadius.circular(size * 0.2),
         boxShadow: [
           BoxShadow(
@@ -121,23 +96,20 @@ class ServiGoLogoCompact extends StatelessWidget {
           ),
         ],
       ),
-      child: Center(
-        child: Text(
-          'SG',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: size * 0.45,
-            fontWeight: FontWeight.w800,
-            fontFamily: 'Montserrat',
-            letterSpacing: -0.5,
-          ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size * 0.2),
+        child: Image.asset(
+          'assets/images/app_icon.png',
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
         ),
       ),
     );
   }
 }
 
-// ✅ UPDATED: Simpler logo for AppBar without text
+// Updated: Simpler logo for AppBar without text
 class ServiGoAppBarLogo extends StatelessWidget {
   const ServiGoAppBarLogo({Key? key}) : super(key: key);
   
@@ -173,6 +145,26 @@ class ServiGoAppBarLogo extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+// Optional: Add a version without text if needed
+class ServiGoImageLogo extends StatelessWidget {
+  final double size;
+  
+  const ServiGoImageLogo({
+    this.size = 40,
+    Key? key,
+  }) : super(key: key);
+  
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/images/app_icon.png',
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
     );
   }
 }
